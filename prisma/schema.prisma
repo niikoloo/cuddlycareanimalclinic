@@ -1,0 +1,83 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+// Define the roles for your system's Authorization
+enum SystemRole {
+  SUPER_ADMIN
+  ORG_ADMIN
+  MEMBER
+  VETERINARIAN
+  CUSTOMER
+  OWNER
+}
+
+// Track the state of the invitation
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+model Organization {
+  // Matches the Clerk Organization ID
+  id          String           @id 
+  name        String
+  
+  // Relationships
+  users       User[]
+  invitations UserInvitation[]
+  
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model User {
+  // Matches the Clerk User ID
+  id             String       @id 
+  email          String       @unique
+  
+  // OPTIONAL: Populated after the user accepts the invite
+  role           SystemRole?  
+  organizationId String?      
+  
+  // Relationships
+  organization   Organization?    @relation(fields: [organizationId], references: [id])
+  invitesSent    UserInvitation[] @relation("InvitedBy")
+  
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model UserInvitation {
+  id             String           @id @default(uuid())
+  email          String
+  token          String           @unique
+  
+  // REQUIRED: We define what they will become upon accepting
+  role           SystemRole       
+  status         InvitationStatus @default(PENDING)
+  
+  // Relationships
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  
+  // Tracking who sent the invite
+  invitedByUserId String
+  inviter         User            @relation("InvitedBy", fields: [invitedByUserId], references: [id])
+  
+  expiresAt      DateTime
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  
+  @@unique([email, organizationId, status]) 
+}
