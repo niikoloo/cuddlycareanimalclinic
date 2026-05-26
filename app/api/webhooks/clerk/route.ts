@@ -5,9 +5,14 @@ import { WebhookEvent } from '@clerk/nextjs/server'
 // Import directly from your custom generated output path
 import { PrismaClient, SystemRole, InvitationStatus } from '../../../generated/prisma'
 
-const prisma = new PrismaClient()
+// Lazily initialize the Prisma client to prevent build crashes
+let prisma: PrismaClient;
 
 export async function POST(req: Request) {
+  if (!prisma) {
+    prisma = new PrismaClient();
+  }
+
   // You can find this in the Clerk Dashboard -> Webhooks -> choose the webhook
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET
 
